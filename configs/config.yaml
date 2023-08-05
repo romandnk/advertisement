@@ -1,0 +1,15 @@
+server:
+  host: "localhost"
+  port: "8080"
+  read_timeout: "10s"
+  write_timeout: "10s"
+
+postgres:
+  host: "localhost"
+  port: "5432"
+  db_name: "advert"
+  sslmode: "disable"
+  max_conns: 5
+  min_conns: 3
+  max_conn_lifetime: "1h"
+  max_conn_idle_time: "1m"
