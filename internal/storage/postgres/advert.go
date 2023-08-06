@@ -102,16 +102,17 @@ func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) error {
 	if len(imagesIDs) == 0 {
 		return custom_error.CustomError{Field: "", Message: pgx.ErrNoRows.Error()}
 	}
-	err = deleteImage(imagesIDs, "static/images/")
-	if err != nil {
-		return custom_error.CustomError{Field: "", Message: err.Error()}
-	}
 
 	queryAdvert := fmt.Sprintf(`
 				DELETE FROM %s
 				WHERE id = $1`, advertsTable)
 
 	_, err = tx.Exec(ctx, queryAdvert, id)
+	if err != nil {
+		return custom_error.CustomError{Field: "", Message: err.Error()}
+	}
+
+	err = deleteImage(imagesIDs, "static/images/")
 	if err != nil {
 		return custom_error.CustomError{Field: "", Message: err.Error()}
 	}
