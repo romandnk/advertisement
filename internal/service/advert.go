@@ -27,6 +27,20 @@ func (s *Service) CreateAdvert(ctx context.Context, advert models.Advert) (strin
 	now := time.Now()
 	advert.CreatedAt = now
 	advert.UpdatedAt = now
+	if len(advert.Images) == 0 {
+		return "", custom_error.CustomError{Field: "images", Message: "no images"}
+	}
+
+	//TODO: authorization
+	advert.UserID = uuid.New().String()
 
 	return s.Advert.CreateAdvert(ctx, advert)
+}
+
+func (s *Service) DeleteAdvert(ctx context.Context, id string) error {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return custom_error.CustomError{Field: "id", Message: "invalid id"}
+	}
+	return s.Advert.DeleteAdvert(ctx, parsedID.String())
 }

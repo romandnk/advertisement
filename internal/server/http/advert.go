@@ -1,14 +1,15 @@
 package http
 
 import (
-	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
-	"github.com/spf13/viper"
 	"io"
 	"net/http"
+	"path/filepath"
+	"time"
 )
 
 func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
@@ -33,11 +34,14 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 
 	imagesForm := r.MultipartForm.File["images"]
 
-	host := viper.GetString("server.host")
-	port := viper.GetInt("server.port")
-
 	var images []*models.Image
 	for _, imageForm := range imagesForm {
+		if filepath.Ext(imageForm.Filename) != ".jpg" && filepath.Ext(imageForm.Filename) != ".jpeg" {
+			resp := newResponse("images", "image must be with .jpg or .jpeg extension: "+imageForm.Filename, nil)
+			renderResponse(w, r, http.StatusBadRequest, resp)
+			return
+		}
+
 		var image models.Image
 
 		file, err := imageForm.Open()
@@ -58,9 +62,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 
 		image.ID = uuid.New().String()
 		image.Data = imageData
-
-		url := fmt.Sprintf("http://%s:%d/api/v1/images/%s", host, port, image.ID)
-		image.Url = url
+		image.CreatedAt = time.Now()
 
 		images = append(images, &image)
 
@@ -81,4 +83,17 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, map[string]string{"id": id})
+}
+
+func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	err := h.service.DeleteAdvert(r.Context(), id)
+	if err != nil {
+		resp := newResponse("", "error deleting advert", err)
+		renderResponse(w, r, http.StatusInternalServerError, resp)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
 }

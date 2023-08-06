@@ -11,6 +11,7 @@ import (
 
 type Advert interface {
 	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
+	DeleteAdvert(ctx context.Context, id string) error
 }
 
 type Services interface {

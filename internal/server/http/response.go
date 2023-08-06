@@ -10,10 +10,14 @@ import (
 type response struct {
 	Field   string `json:"field,omitempty"`
 	Message string `json:"message"`
-	Error   string `json:"error"`
+	Error   string `json:"error,omitempty"`
 }
 
 func newResponse(field, message string, err error) response {
+	if err == nil {
+		return response{Field: field, Message: message}
+	}
+
 	var customError custom_error.CustomError
 
 	if errors.As(err, &customError) {

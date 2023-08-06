@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	avertsTable = "adverts"
-	imagesTable = "images"
+	usersTable   = "users"
+	advertsTable = "adverts"
+	imagesTable  = "images"
 )
 
 func NewPostgresDB(ctx context.Context, cfg configs.PostgresConf) (*pgxpool.Pool, error) {
