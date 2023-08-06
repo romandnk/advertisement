@@ -1,5 +1,6 @@
 package models
 
 type Image struct {
-	ID string
+	ID  string
+	Url string
 }

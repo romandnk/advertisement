@@ -12,7 +12,7 @@ type Server struct {
 	srv *http.Server
 }
 
-func NewServer(host string, port int, handler http.Handler, readTimeout, writeTimeout time.Duration) *Server {
+func NewServer(host string, port int, readTimeout, writeTimeout time.Duration, handler http.Handler) *Server {
 	srv := &http.Server{
 		Addr:         net.JoinHostPort(host, strconv.Itoa(port)),
 		Handler:      handler,

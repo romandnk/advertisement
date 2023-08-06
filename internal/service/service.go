@@ -1,22 +1,31 @@
 package service
 
-import "context"
+import (
+	"context"
+	"github.com/romandnk/advertisement/internal/models"
+)
 
-type Image interface {
-	UploadImage(ctx context.Context)
-	GetImage(ctx context.Context)
+//type Image interface {
+//	GetImage(ctx context.Context)
+//}
+
+type Advert interface {
+	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
 }
 
 type Services interface {
-	Image
+	Advert
+	//Image
 }
 
 type Service struct {
-	image Image
+	Advert Advert
+	//Image  Image
 }
 
-func NewService(image Image) *Service {
+func NewService(advert Advert) *Service {
 	return &Service{
-		image: image,
+		Advert: advert,
+		//Image:  image,
 	}
 }
