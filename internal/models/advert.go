@@ -12,5 +12,5 @@ type Advert struct {
 	Price       decimal.Decimal
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	Images      []Image
+	Images      []*Image
 }

@@ -3,16 +3,19 @@ module github.com/romandnk/advertisement
 go 1.20
 
 require (
+	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/render v1.0.3
+	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.4.3
+	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/viper v1.16.0
 	github.com/subosito/gotenv v1.4.2
 	go.uber.org/zap v1.25.0
 )
 
 require (
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-chi/chi/v5 v5.0.10 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
@@ -20,7 +23,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

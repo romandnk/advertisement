@@ -1,6 +1,7 @@
 package models
 
 type Image struct {
-	ID  string
-	Url string
+	ID   string
+	Data []byte
+	Url  string
 }
