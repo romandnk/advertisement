@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
@@ -87,5 +88,81 @@ func TestSaveImage(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = os.Stat(dir + image.ID + ".jpg")
+	require.NoError(t, err)
+}
+
+func TestPostgresStorageDeleteAdvert(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mock.Close()
+
+	id := uuid.New().String()
+
+	querySelect := fmt.Sprintf(`
+				SELECT id FROM %s
+				WHERE advert_id = $1`, imagesTable)
+
+	queryAdvert := fmt.Sprintf(`
+				DELETE FROM %s
+				WHERE id = $1`, advertsTable)
+
+	columns := []string{"id"}
+	rows := pgxmock.NewRows(columns).AddRow("test image id")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(querySelect)).WithArgs(id).WillReturnRows(rows)
+	mock.ExpectExec(regexp.QuoteMeta(queryAdvert)).WithArgs(id).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectCommit()
+
+	storage := NewPostgresStorage(mock)
+
+	dir := t.TempDir()
+	err = saveImage(&models.Image{ID: "test image id"}, dir)
+	require.NoError(t, err)
+
+	err = storage.DeleteAdvert(context.Background(), id, dir)
+	require.NoError(t, err)
+
+	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
+}
+
+func TestPostgresStorageDeleteAdvertError(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mock.Close()
+
+	id := uuid.New().String()
+
+	querySelect := fmt.Sprintf(`
+				SELECT id FROM %s
+				WHERE advert_id = $1`, imagesTable)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(querySelect)).WithArgs(id).WillReturnError(pgx.ErrNoRows)
+	mock.ExpectRollback()
+
+	storage := NewPostgresStorage(mock)
+
+	dir := t.TempDir()
+
+	err = storage.DeleteAdvert(context.Background(), id, dir)
+	require.EqualError(t, err, pgx.ErrNoRows.Error())
+
+	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
+}
+
+func TestDeleteImage(t *testing.T) {
+	dir := t.TempDir()
+
+	image := &models.Image{
+		ID:        uuid.New().String(),
+		Data:      []byte("test"),
+		CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+
+	err := saveImage(image, dir)
+	require.NoError(t, err)
+
+	err = deleteImage([]string{image.ID}, dir)
 	require.NoError(t, err)
 }
