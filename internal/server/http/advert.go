@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var pathToImages = "static/images/"
+
 func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	var advert models.Advert
 
@@ -74,7 +76,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	advert.Price = price
 	advert.Images = images
 
-	id, err := h.service.CreateAdvert(r.Context(), advert)
+	id, err := h.service.CreateAdvert(r.Context(), advert, pathToImages)
 	if err != nil {
 		resp := newResponse("", "error creating advert", err)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
@@ -88,7 +90,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	err := h.service.DeleteAdvert(r.Context(), id)
+	err := h.service.DeleteAdvert(r.Context(), id, pathToImages)
 	if err != nil {
 		resp := newResponse("", "error deleting advert", err)
 		renderResponse(w, r, http.StatusInternalServerError, resp)

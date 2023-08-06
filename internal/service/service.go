@@ -1,5 +1,7 @@
 package service
 
+//go:generate mockgen -source=service.go -destination=mock/mock.go service
+
 import (
 	"context"
 	"github.com/romandnk/advertisement/internal/models"
@@ -10,8 +12,8 @@ import (
 //}
 
 type Advert interface {
-	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
-	DeleteAdvert(ctx context.Context, id string) error
+	CreateAdvert(ctx context.Context, advert models.Advert, path string) (string, error)
+	DeleteAdvert(ctx context.Context, id string, path string) error
 }
 
 type Services interface {

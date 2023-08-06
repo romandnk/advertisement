@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (s *Service) CreateAdvert(ctx context.Context, advert models.Advert) (string, error) {
+func (s *Service) CreateAdvert(ctx context.Context, advert models.Advert, path string) (string, error) {
 	id := uuid.New().String()
 	advert.ID = id
 
@@ -34,13 +34,13 @@ func (s *Service) CreateAdvert(ctx context.Context, advert models.Advert) (strin
 	//TODO: authorization
 	advert.UserID = uuid.New().String()
 
-	return s.Advert.CreateAdvert(ctx, advert)
+	return s.Advert.CreateAdvert(ctx, advert, path)
 }
 
-func (s *Service) DeleteAdvert(ctx context.Context, id string) error {
+func (s *Service) DeleteAdvert(ctx context.Context, id string, path string) error {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		return custom_error.CustomError{Field: "id", Message: "invalid id"}
 	}
-	return s.Advert.DeleteAdvert(ctx, parsedID.String())
+	return s.Advert.DeleteAdvert(ctx, parsedID.String(), path)
 }

@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert) (string, error) {
+func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert, path string) (string, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return "", custom_error.CustomError{Field: "", Message: err.Error()}
@@ -51,7 +51,7 @@ func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert
 			return "", custom_error.CustomError{Field: "", Message: "image was not inserted"}
 		}
 
-		err = saveImage(image, "static/images/")
+		err = saveImage(image, path)
 		if err != nil {
 			return "", custom_error.CustomError{Field: "", Message: err.Error()}
 		}
@@ -70,7 +70,7 @@ func saveImage(image *models.Image, path string) error {
 	return err
 }
 
-func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) error {
+func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string, path string) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return custom_error.CustomError{Field: "", Message: err.Error()}
@@ -112,7 +112,7 @@ func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) error {
 		return custom_error.CustomError{Field: "", Message: err.Error()}
 	}
 
-	err = deleteImage(imagesIDs, "static/images/")
+	err = deleteImage(imagesIDs, path)
 	if err != nil {
 		return custom_error.CustomError{Field: "", Message: err.Error()}
 	}
