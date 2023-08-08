@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/custom_error"
+	"github.com/romandnk/advertisement/internal/logger"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/romandnk/advertisement/internal/storage"
+	"go.uber.org/zap"
 	"os"
 	"strings"
 	"time"
@@ -15,10 +17,14 @@ var pathToImages = "static/images/"
 
 type AdvertService struct {
 	advert storage.AdvertStorage
+	logger logger.Logger
 }
 
-func NewAdvertService(advert storage.AdvertStorage) *AdvertService {
-	return &AdvertService{advert: advert}
+func NewAdvertService(advert storage.AdvertStorage, logger logger.Logger) *AdvertService {
+	return &AdvertService{
+		advert: advert,
+		logger: logger,
+	}
 }
 
 func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) (string, error) {
@@ -90,7 +96,7 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	for _, imageID := range imageIDs {
 		err := deleteImage(imageID, pathToImages)
 		if err != nil {
-			return err
+			a.logger.Error("error", zap.Error(err))
 		}
 	}
 
@@ -98,5 +104,9 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 }
 
 func deleteImage(imageID string, path string) error {
-	return os.Remove(path + imageID + ".jpg")
+	pathImage := path + imageID + ".jpg"
+	if _, err := os.Stat(pathImage); os.IsNotExist(err) {
+		return nil
+	}
+	return os.Remove(pathImage)
 }

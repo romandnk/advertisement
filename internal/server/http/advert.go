@@ -11,12 +11,18 @@ import (
 	"net/http"
 )
 
+var (
+	createAdvertAction = "create advert"
+	deleteAdvertAction = "delete advert"
+)
+
 func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	var advert models.Advert
 
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		resp := newResponse("", "error parsing form", err)
+		h.logError(resp.Message, createAdvertAction, resp.Error)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
 		return
 	}
@@ -27,6 +33,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	price, err := decimal.NewFromString(priceStr)
 	if err != nil {
 		resp := newResponse("price", "must be a  number e.g. 123.45", err)
+		h.logError(resp.Message, createAdvertAction, resp.Error)
 		renderResponse(w, r, http.StatusBadRequest, resp)
 		return
 	}
@@ -41,6 +48,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			file.Close()
 			resp := newResponse("images", "error opening file: "+imageForm.Filename, err)
+			h.logError(resp.Message, createAdvertAction, resp.Error)
 			renderResponse(w, r, http.StatusBadRequest, resp)
 			return
 		}
@@ -48,6 +56,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 		_, _, err = image.Decode(file)
 		if err != nil {
 			resp := newResponse("images", "image cannot be decoded: "+imageForm.Filename, nil)
+			h.logError(resp.Message, createAdvertAction, resp.Error)
 			renderResponse(w, r, http.StatusBadRequest, resp)
 			return
 		}
@@ -56,6 +65,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			file.Close()
 			resp := newResponse("images", "error reading file: "+imageForm.Filename, err)
+			h.logError(resp.Message, createAdvertAction, resp.Error)
 			renderResponse(w, r, http.StatusBadRequest, resp)
 			return
 		}
@@ -75,6 +85,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	id, err := h.service.CreateAdvert(r.Context(), advert)
 	if err != nil {
 		resp := newResponse("", "error creating advert", err)
+		h.logError(resp.Message, createAdvertAction, resp.Error)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
 		return
 	}
@@ -89,6 +100,7 @@ func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
 	err := h.service.DeleteAdvert(r.Context(), id)
 	if err != nil {
 		resp := newResponse("", "error deleting advert", err)
+		h.logError(resp.Message, deleteAdvertAction, resp.Error)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
 		return
 	}

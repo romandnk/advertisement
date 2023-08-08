@@ -40,3 +40,19 @@ func TestDeleteImage(t *testing.T) {
 	err = deleteImage(image.ID, dir)
 	require.NoError(t, err)
 }
+
+func TestDeleteImageFileIsNotExist(t *testing.T) {
+	dir := t.TempDir()
+
+	image := &models.Image{
+		ID:        uuid.New().String(),
+		Data:      []byte("test"),
+		CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+
+	err := saveImage(image, dir)
+	require.NoError(t, err)
+
+	err = deleteImage(image.ID, dir)
+	require.NoError(t, err)
+}

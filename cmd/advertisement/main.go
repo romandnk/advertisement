@@ -43,7 +43,7 @@ func main() {
 
 	storage := postgres.NewPostgresStorage(db)
 
-	services := service.NewService(storage)
+	services := service.NewService(storage, log)
 
 	handler := http.NewHandler(services, log)
 

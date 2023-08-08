@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/romandnk/advertisement/internal/logger"
 	"github.com/romandnk/advertisement/internal/service"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
@@ -22,6 +23,8 @@ func NewHandler(service service.Services, logger logger.Logger) *Handler {
 func (h *Handler) InitRoutes() *chi.Mux {
 	r := chi.NewRouter()
 
+	r.Use(loggingMiddleware(h.logger))
+
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
 			r.Route("/adverts", func(r chi.Router) {
@@ -34,4 +37,11 @@ func (h *Handler) InitRoutes() *chi.Mux {
 	h.hl = r
 
 	return h.hl
+}
+
+func (h *Handler) logError(message, action string, err string) {
+	h.logger.Error(message,
+		zap.String("action", action),
+		zap.String("error", err),
+	)
 }

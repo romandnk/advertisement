@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"github.com/romandnk/advertisement/internal/logger"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/romandnk/advertisement/internal/storage"
 )
@@ -21,8 +22,8 @@ type Service struct {
 	Advert
 }
 
-func NewService(storage storage.Storage) *Service {
+func NewService(storage storage.Storage, logger logger.Logger) *Service {
 	return &Service{
-		NewAdvertService(storage),
+		NewAdvertService(storage, logger),
 	}
 }

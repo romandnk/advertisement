@@ -7,11 +7,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/custom_error"
+	mock_logger "github.com/romandnk/advertisement/internal/logger/mock"
 	"github.com/romandnk/advertisement/internal/models"
 	mock_service "github.com/romandnk/advertisement/internal/service/mock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -82,22 +84,28 @@ func TestHandlerCreateAdvert(t *testing.T) {
 func TestHandlerCreateAdvertError(t *testing.T) {
 	testCases := []struct {
 		name           string
+		message        string
+		expectedError  string
 		expectedAdvert map[string]string
 		code           int
 		contentType    string
 		responseBody   map[string]interface{}
 	}{
 		{
-			name:        "content type is application/json",
-			code:        http.StatusInternalServerError,
-			contentType: "application/json",
+			name:          "content type is application/json",
+			message:       "error parsing form",
+			expectedError: "request Content-Type isn't multipart/form-data",
+			code:          http.StatusInternalServerError,
+			contentType:   "application/json",
 			responseBody: map[string]interface{}{
 				"message": "error parsing form",
 				"error":   "request Content-Type isn't multipart/form-data",
 			},
 		},
 		{
-			name: "invalid price",
+			name:          "invalid price",
+			message:       "must be a  number e.g. 123.45",
+			expectedError: "can't convert invalid price to decimal: exponent is not numeric",
 			expectedAdvert: map[string]string{
 				"price": "invalid price",
 			},
@@ -117,7 +125,14 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 			defer ctrl.Finish()
 
 			services := mock_service.NewMockServices(ctrl)
-			handler := NewHandler(services, nil)
+			logger := mock_logger.NewMockLogger(ctrl)
+
+			logger.EXPECT().Error(tc.message,
+				zap.String("action", createAdvertAction),
+				zap.String("error", tc.expectedError),
+			)
+
+			handler := NewHandler(services, logger)
 			r := chi.NewRouter()
 			r.Post(url, handler.CreateAdvert)
 
@@ -215,8 +230,15 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 			defer ctrl.Finish()
 
 			services := mock_service.NewMockServices(ctrl)
+			logger := mock_logger.NewMockLogger(ctrl)
 
-			handler := NewHandler(services, nil)
+			services.EXPECT().CreateAdvert(gomock.Any(), tc.expectedAdvert).Return("", tc.expectedError)
+			logger.EXPECT().Error(message,
+				zap.String("action", createAdvertAction),
+				zap.String("error", tc.expectedError.Error()),
+			)
+
+			handler := NewHandler(services, logger)
 			r := chi.NewRouter()
 			r.Post(url, handler.CreateAdvert)
 
@@ -246,7 +268,6 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 
 			req.Header.Set("Content-Type", bodyWriter.FormDataContentType())
 
-			services.EXPECT().CreateAdvert(gomock.Any(), tc.expectedAdvert).Return("", tc.expectedError)
 			r.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -322,12 +343,17 @@ func TestHandlerDeleteAdvertError(t *testing.T) {
 			defer ctrl.Finish()
 
 			services := mock_service.NewMockServices(ctrl)
+			logger := mock_logger.NewMockLogger(ctrl)
 
 			ctx := context.Background()
 
 			services.EXPECT().DeleteAdvert(gomock.Any(), tc.id).Return(tc.expectedError)
+			logger.EXPECT().Error("error deleting advert",
+				zap.String("action", deleteAdvertAction),
+				zap.String("error", tc.expectedError.Error()),
+			)
 
-			handler := NewHandler(services, nil)
+			handler := NewHandler(services, logger)
 
 			r := chi.NewRouter()
 			r.Post(url+"/{id}", handler.DeleteAdvert)
