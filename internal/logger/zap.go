@@ -1,5 +1,7 @@
 package logger
 
+//go:generate mockgen -source=zap.go -destination=mock/mock.go logger
+
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

@@ -9,7 +9,6 @@ import (
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
-	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -33,6 +32,7 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 			ID:        uuid.New().String(),
 			Data:      []byte("test data"),
 			CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
+			Deleted:   false,
 		}},
 	}
 
@@ -42,8 +42,8 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 	`, advertsTable)
 
 	queryImage := fmt.Sprintf(`
-				INSERT INTO %s (id, advert_id, created_at)
-				VALUES ($1, $2, $3)
+				INSERT INTO %s (id, advert_id, created_at, deleted)
+				VALUES ($1, $2, $3, $4)
 	`, imagesTable)
 
 	mock.ExpectBegin()
@@ -61,34 +61,17 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 		advert.Images[0].ID,
 		advert.ID,
 		advert.Images[0].CreatedAt,
+		advert.Images[0].Deleted,
 	).WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	mock.ExpectCommit()
 
 	storage := NewPostgresStorage(mock)
 
-	dir := t.TempDir()
-
-	id, err := storage.CreateAdvert(context.Background(), advert, dir)
+	id, err := storage.CreateAdvert(context.Background(), advert)
 	require.NoError(t, err)
 	require.Equal(t, advert.ID, id)
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
-}
-
-func TestSaveImage(t *testing.T) {
-	dir := t.TempDir()
-
-	image := &models.Image{
-		ID:        uuid.New().String(),
-		Data:      []byte("test"),
-		CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
-	}
-
-	err := saveImage(image, dir)
-	require.NoError(t, err)
-
-	_, err = os.Stat(dir + image.ID + ".jpg")
-	require.NoError(t, err)
 }
 
 func TestPostgresStorageDeleteAdvert(t *testing.T) {
@@ -98,30 +81,34 @@ func TestPostgresStorageDeleteAdvert(t *testing.T) {
 
 	id := uuid.New().String()
 
-	querySelect := fmt.Sprintf(`
-				SELECT id FROM %s
-				WHERE advert_id = $1`, imagesTable)
-
-	queryAdvert := fmt.Sprintf(`
-				DELETE FROM %s
+	updateAdverts := fmt.Sprintf(`
+				UPDATE %s
+				SET deleted = TRUE
 				WHERE id = $1`, advertsTable)
 
+	updateImages := fmt.Sprintf(`
+				UPDATE %s
+				SET deleted = TRUE
+				WHERE advert_id = $1 RETURNING id`, imagesTable)
+
 	columns := []string{"id"}
-	rows := pgxmock.NewRows(columns).AddRow("test image id")
+	rows := pgxmock.NewRows(columns).
+		AddRow("test id 1").
+		AddRow("test id 2").
+		AddRow("test id 3")
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(querySelect)).WithArgs(id).WillReturnRows(rows)
-	mock.ExpectExec(regexp.QuoteMeta(queryAdvert)).WithArgs(id).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(id).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectQuery(regexp.QuoteMeta(updateImages)).WithArgs(id).WillReturnRows(rows)
 	mock.ExpectCommit()
 
 	storage := NewPostgresStorage(mock)
 
-	dir := t.TempDir()
-	err = saveImage(&models.Image{ID: "test image id"}, dir)
+	images, err := storage.DeleteAdvert(context.Background(), id)
 	require.NoError(t, err)
 
-	err = storage.DeleteAdvert(context.Background(), id, dir)
-	require.NoError(t, err)
+	expectedImages := []string{"test id 1", "test id 2", "test id 3"}
+	require.ElementsMatch(t, expectedImages, images)
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
 }
@@ -133,36 +120,20 @@ func TestPostgresStorageDeleteAdvertError(t *testing.T) {
 
 	id := uuid.New().String()
 
-	querySelect := fmt.Sprintf(`
-				SELECT id FROM %s
-				WHERE advert_id = $1`, imagesTable)
+	updateAdverts := fmt.Sprintf(`
+				UPDATE %s
+				SET deleted = TRUE
+				WHERE id = $1`, advertsTable)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(querySelect)).WithArgs(id).WillReturnError(pgx.ErrNoRows)
+	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(id).WillReturnError(pgx.ErrNoRows)
 	mock.ExpectRollback()
 
 	storage := NewPostgresStorage(mock)
 
-	dir := t.TempDir()
-
-	err = storage.DeleteAdvert(context.Background(), id, dir)
+	images, err := storage.DeleteAdvert(context.Background(), id)
 	require.EqualError(t, err, pgx.ErrNoRows.Error())
+	require.Len(t, images, 0)
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
-}
-
-func TestDeleteImage(t *testing.T) {
-	dir := t.TempDir()
-
-	image := &models.Image{
-		ID:        uuid.New().String(),
-		Data:      []byte("test"),
-		CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
-	}
-
-	err := saveImage(image, dir)
-	require.NoError(t, err)
-
-	err = deleteImage([]string{image.ID}, dir)
-	require.NoError(t, err)
 }

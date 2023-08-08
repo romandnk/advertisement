@@ -5,30 +5,24 @@ package service
 import (
 	"context"
 	"github.com/romandnk/advertisement/internal/models"
+	"github.com/romandnk/advertisement/internal/storage"
 )
 
-//type Image interface {
-//	GetImage(ctx context.Context)
-//}
-
 type Advert interface {
-	CreateAdvert(ctx context.Context, advert models.Advert, path string) (string, error)
-	DeleteAdvert(ctx context.Context, id string, path string) error
+	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
+	DeleteAdvert(ctx context.Context, id string) error
 }
 
 type Services interface {
 	Advert
-	//Image
 }
 
 type Service struct {
-	Advert Advert
-	//Image  Image
+	Advert
 }
 
-func NewService(advert Advert) *Service {
+func NewService(storage storage.Storage) *Service {
 	return &Service{
-		Advert: advert,
-		//Image:  image,
+		NewAdvertService(storage),
 	}
 }

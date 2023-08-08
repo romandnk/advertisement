@@ -10,7 +10,7 @@ require (
 	github.com/pashagolub/pgxmock/v2 v2.10.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/subosito/gotenv v1.4.2
 	go.uber.org/mock v0.2.0
 	go.uber.org/zap v1.25.0

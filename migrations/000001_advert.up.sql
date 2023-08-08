@@ -14,14 +14,15 @@ CREATE TABLE adverts (
     price NUMERIC(10, 2) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    user_id VARCHAR(36),
-    deleted BOOLEAN
+    user_id VARCHAR(36) NOT NULL,
+    deleted BOOLEAN NOT NULL
 );
 
 CREATE TABLE images (
     id VARCHAR(36) PRIMARY KEY,
-    advert_id VARCHAR(36) REFERENCES adverts(id) ON DELETE CASCADE,
-    created_at TIMESTAMP NOT NULL
+    advert_id VARCHAR(36) REFERENCES adverts(id),
+    created_at TIMESTAMP NOT NULL,
+    deleted BOOLEAN NOT NULL
 );
 
 

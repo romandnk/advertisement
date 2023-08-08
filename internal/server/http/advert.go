@@ -3,16 +3,13 @@ package http
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
+	"image"
+	_ "image/jpeg"
 	"io"
 	"net/http"
-	"path/filepath"
-	"time"
 )
-
-var pathToImages = "static/images/"
 
 func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	var advert models.Advert
@@ -38,18 +35,19 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 
 	var images []*models.Image
 	for _, imageForm := range imagesForm {
-		if filepath.Ext(imageForm.Filename) != ".jpg" && filepath.Ext(imageForm.Filename) != ".jpeg" {
-			resp := newResponse("images", "image must be with .jpg or .jpeg extension: "+imageForm.Filename, nil)
-			renderResponse(w, r, http.StatusBadRequest, resp)
-			return
-		}
-
-		var image models.Image
+		var img models.Image
 
 		file, err := imageForm.Open()
 		if err != nil {
 			file.Close()
 			resp := newResponse("images", "error opening file: "+imageForm.Filename, err)
+			renderResponse(w, r, http.StatusBadRequest, resp)
+			return
+		}
+
+		_, _, err = image.Decode(file)
+		if err != nil {
+			resp := newResponse("images", "image cannot be decoded: "+imageForm.Filename, nil)
 			renderResponse(w, r, http.StatusBadRequest, resp)
 			return
 		}
@@ -62,11 +60,9 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		image.ID = uuid.New().String()
-		image.Data = imageData
-		image.CreatedAt = time.Now()
+		img.Data = imageData
 
-		images = append(images, &image)
+		images = append(images, &img)
 
 		file.Close()
 	}
@@ -76,7 +72,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	advert.Price = price
 	advert.Images = images
 
-	id, err := h.service.CreateAdvert(r.Context(), advert, pathToImages)
+	id, err := h.service.CreateAdvert(r.Context(), advert)
 	if err != nil {
 		resp := newResponse("", "error creating advert", err)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
@@ -90,7 +86,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	err := h.service.DeleteAdvert(r.Context(), id, pathToImages)
+	err := h.service.DeleteAdvert(r.Context(), id)
 	if err != nil {
 		resp := newResponse("", "error deleting advert", err)
 		renderResponse(w, r, http.StatusInternalServerError, resp)
