@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-var secret = []byte("secret")
-
 func (h *Handler) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lrw := negroni.NewResponseWriter(w)
@@ -51,7 +49,7 @@ func (h *Handler) authorizationMiddleware(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusUnauthorized)
 				return nil, errors.New("error parsing token")
 			}
-			return secret, nil
+			return []byte(h.secretKey), nil
 		})
 		if err != nil || !token.Valid {
 			resp := newResponse("", "unauthorized", err)

@@ -20,7 +20,10 @@ import (
 	"testing"
 )
 
-const urlAdverts = "/api/v1/adverts"
+const (
+	urlAdverts = "/api/v1/adverts"
+	secretTest = "test"
+)
 
 func TestHandlerCreateAdvert(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -42,7 +45,7 @@ func TestHandlerCreateAdvert(t *testing.T) {
 
 	services.EXPECT().CreateAdvert(gomock.Any(), expectedAdvert).Return(expectedID, nil)
 
-	handler := NewHandler(services, nil)
+	handler := NewHandler(services, nil, secretTest)
 
 	r := chi.NewRouter()
 	r.Post(urlAdverts, handler.CreateAdvert)
@@ -149,7 +152,7 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 				zap.String("error", tc.expectedError),
 			)
 
-			handler := NewHandler(services, logger)
+			handler := NewHandler(services, logger, secretTest)
 			r := chi.NewRouter()
 			r.Post(urlAdverts, handler.CreateAdvert)
 
@@ -260,7 +263,7 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 				zap.String("error", tc.expectedError.Error()),
 			)
 
-			handler := NewHandler(services, logger)
+			handler := NewHandler(services, logger, secretTest)
 			r := chi.NewRouter()
 			r.Post(urlAdverts, handler.CreateAdvert)
 
@@ -316,7 +319,7 @@ func TestHandlerDeleteAdvert(t *testing.T) {
 
 	services.EXPECT().DeleteAdvert(gomock.Any(), expectedID).Return(nil)
 
-	handler := NewHandler(services, nil)
+	handler := NewHandler(services, nil, secretTest)
 
 	r := chi.NewRouter()
 	r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
@@ -376,7 +379,7 @@ func TestHandlerDeleteAdvertError(t *testing.T) {
 				zap.String("error", tc.expectedError.Error()),
 			)
 
-			handler := NewHandler(services, logger)
+			handler := NewHandler(services, logger, secretTest)
 
 			r := chi.NewRouter()
 			r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)

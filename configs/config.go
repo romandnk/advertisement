@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var (
@@ -35,6 +36,9 @@ var (
 	ErrZapLoggerEmptyErrorOutputPath = errors.New("zap logger: empty error output path")
 	ErrPathImagesNotExist            = errors.New("images path: path does not exist")
 	ErrPathImagesIsNotDir            = errors.New("images path: path is not a dir")
+	ErrSecretKeyEmpty                = errors.New("secret key: empty")
+	ErrSecretKeyTooSmall             = errors.New("secret key: min length is 6")
+	ErrSecretKeyTooBig               = errors.New("secret key: max length is 12")
 )
 
 type Config struct {
@@ -42,6 +46,7 @@ type Config struct {
 	Server       ServerConf
 	ZapLogger    ZapLoggerConf
 	PathToImages string
+	SecretKey    string
 }
 
 type PostgresConf struct {
@@ -115,11 +120,17 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	secret := viper.GetString("SECRET")
+	if err := validateSecretKey(secret); err != nil {
+		return nil, err
+	}
+
 	config := Config{
 		Postgres:     postgres,
 		Server:       server,
 		ZapLogger:    zapLogger,
 		PathToImages: pathToImages,
+		SecretKey:    secret,
 	}
 
 	return &config, nil
@@ -311,6 +322,19 @@ func validatePathToImages(path string) error {
 		if !info.IsDir() {
 			return ErrPathImagesIsNotDir
 		}
+	}
+	return nil
+}
+
+func validateSecretKey(key string) error {
+	if utf8.RuneCountInString(key) == 0 {
+		return ErrSecretKeyEmpty
+	}
+	if utf8.RuneCountInString(key) < 6 {
+		return ErrSecretKeyTooSmall
+	}
+	if utf8.RuneCountInString(key) > 12 {
+		return ErrSecretKeyTooBig
 	}
 	return nil
 }

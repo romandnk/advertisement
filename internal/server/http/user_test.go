@@ -35,7 +35,7 @@ func TestHandlerSignUp(t *testing.T) {
 
 	service.EXPECT().SignUp(gomock.Any(), expectedUser).Return(expectedID, nil)
 
-	handler := NewHandler(service, nil)
+	handler := NewHandler(service, nil, secretTest)
 
 	r := chi.NewRouter()
 	r.Post(urlUsers+"/sign-up", handler.SignUp)
@@ -81,7 +81,7 @@ func TestHandlerSignUpError(t *testing.T) {
 		zap.String("error", "json: cannot unmarshal bool into Go struct field bodyUser.email of type string"),
 	)
 
-	handler := NewHandler(nil, logger)
+	handler := NewHandler(nil, logger, secretTest)
 
 	r := chi.NewRouter()
 	r.Post(urlUsers+"/sign-up", handler.SignUp)
@@ -184,7 +184,7 @@ func TestHandlerSignUpErrorCreatingUser(t *testing.T) {
 				zap.String("error", tc.expectedError.Error()),
 			)
 
-			handler := NewHandler(service, logger)
+			handler := NewHandler(service, logger, secretTest)
 
 			r := chi.NewRouter()
 			r.Post(urlUsers+"/sign-up", handler.SignUp)

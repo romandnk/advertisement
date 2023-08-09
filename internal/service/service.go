@@ -29,9 +29,9 @@ type Service struct {
 	Advert
 }
 
-func NewService(storage storage.Storage, logger logger.Logger, pathToImages string) *Service {
+func NewService(storage storage.Storage, logger logger.Logger, secretKey, pathToImages string) *Service {
 	return &Service{
-		NewUserService(storage, logger),
+		NewUserService(storage, logger, secretKey),
 		NewAdvertService(storage, logger, pathToImages),
 	}
 }

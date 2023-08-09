@@ -43,9 +43,9 @@ func main() {
 
 	storage := postgres.NewPostgresStorage(db)
 
-	services := service.NewService(storage, log, config.PathToImages)
+	services := service.NewService(storage, log, config.SecretKey, config.PathToImages)
 
-	handler := http.NewHandler(services, log)
+	handler := http.NewHandler(services, log, config.SecretKey)
 
 	server := http.NewServer(config.Server.Host, config.Server.Port,
 		config.Server.ReadTimeout, config.Server.WriteTimeout, handler.InitRoutes())

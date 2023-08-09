@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-var secret = []byte("secret")
-
 type UserService struct {
-	user   storage.UserStorage
-	logger logger.Logger
+	user      storage.UserStorage
+	logger    logger.Logger
+	secretKey string
 }
 
-func NewUserService(user storage.UserStorage, logger logger.Logger) *UserService {
+func NewUserService(user storage.UserStorage, logger logger.Logger, secretKey string) *UserService {
 	return &UserService{
-		user:   user,
-		logger: logger,
+		user:      user,
+		logger:    logger,
+		secretKey: secretKey,
 	}
 }
 
@@ -69,7 +69,7 @@ func (u *UserService) SignIn(ctx context.Context, email, password string) (strin
 		return "", custom_error.CustomError{Field: "password", Message: "invalid password"}
 	}
 
-	token, err := createJWT(secret, user.ID)
+	token, err := createJWT([]byte(u.secretKey), user.ID)
 	if err != nil {
 		return "", err
 	}

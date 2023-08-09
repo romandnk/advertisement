@@ -8,15 +8,17 @@ import (
 )
 
 type Handler struct {
-	hl      *chi.Mux
-	service service.Services
-	logger  logger.Logger
+	hl        *chi.Mux
+	service   service.Services
+	logger    logger.Logger
+	secretKey string
 }
 
-func NewHandler(service service.Services, logger logger.Logger) *Handler {
+func NewHandler(service service.Services, logger logger.Logger, secretKey string) *Handler {
 	return &Handler{
-		service: service,
-		logger:  logger,
+		service:   service,
+		logger:    logger,
+		secretKey: secretKey,
 	}
 }
 
