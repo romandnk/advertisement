@@ -11,6 +11,7 @@ import (
 
 type User interface {
 	SignUp(ctx context.Context, user models.User) (string, error)
+	SignIn(ctx context.Context, email, password string) (string, error)
 }
 
 type Advert interface {

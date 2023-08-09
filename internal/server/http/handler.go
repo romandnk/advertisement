@@ -23,15 +23,17 @@ func NewHandler(service service.Services, logger logger.Logger) *Handler {
 func (h *Handler) InitRoutes() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Use(loggingMiddleware(h.logger))
+	r.Use(h.loggingMiddleware)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
 			r.Route("/users", func(r chi.Router) {
 				r.Post("/sign-up", h.SignUp)
+				r.Post("/sign-in", h.SignIn)
 			})
 
 			r.Route("/adverts", func(r chi.Router) {
+				r.Use(h.authorizationMiddleware)
 				r.Post("/", h.CreateAdvert)
 				r.Delete("/{id}", h.DeleteAdvert)
 			})

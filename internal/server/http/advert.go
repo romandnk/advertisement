@@ -80,6 +80,7 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	advert.Title = title
 	advert.Description = description
 	advert.Price = price
+	advert.UserID = r.Context().Value("user_id").(string)
 	advert.Images = images
 
 	id, err := h.service.CreateAdvert(r.Context(), advert)
@@ -105,5 +106,5 @@ func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Status(r, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }

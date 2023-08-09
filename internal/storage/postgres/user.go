@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
 )
@@ -23,4 +25,30 @@ func (s *PostgresStorage) CreateUser(ctx context.Context, user models.User) (str
 	}
 
 	return user.ID, nil
+}
+
+func (s *PostgresStorage) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
+	var user models.User
+
+	query := fmt.Sprintf(`
+			SELECT id, email, password, created_at, updated_at, deleted
+			FROM %s 
+			WHERE email = $1
+	`, usersTable)
+
+	err := s.db.QueryRow(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Password,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Deleted)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return user, custom_error.CustomError{Field: "email", Message: "invalid email"}
+		}
+		return user, custom_error.CustomError{Field: "", Message: err.Error()}
+	}
+
+	return user, nil
 }

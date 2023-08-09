@@ -50,9 +50,6 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 		return "", custom_error.CustomError{Field: "images", Message: "max number of images is 7"}
 	}
 
-	//TODO: authorization
-	advert.UserID = uuid.New().String()
-
 	for _, image := range advert.Images {
 		image.ID = uuid.New().String()
 		image.CreatedAt = now

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/logger"
@@ -10,6 +11,8 @@ import (
 	"net/mail"
 	"time"
 )
+
+var secret = []byte("secret")
 
 type UserService struct {
 	user   storage.UserStorage
@@ -46,4 +49,30 @@ func (u *UserService) SignUp(ctx context.Context, user models.User) (string, err
 	user.Password = hashedPassword
 
 	return u.user.CreateUser(ctx, user)
+}
+
+func (u *UserService) SignIn(ctx context.Context, email, password string) (string, error) {
+	user, err := u.user.GetUserByEmail(ctx, email)
+	if err != nil {
+		var customError custom_error.CustomError
+		if errors.As(err, &customError) {
+			return "", err
+		}
+		return "", custom_error.CustomError{Field: "", Message: err.Error()}
+	}
+
+	if user.Deleted == true {
+		return "", nil
+	}
+
+	if !comparePassword(password, user.Password) {
+		return "", custom_error.CustomError{Field: "password", Message: "invalid password"}
+	}
+
+	token, err := createJWT(secret, user.ID)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }

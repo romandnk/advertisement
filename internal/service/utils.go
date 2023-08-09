@@ -1,11 +1,13 @@
 package service
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"os"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -75,4 +77,25 @@ func hashPassword(pwd string) (string, error) {
 		return "", err
 	}
 	return string(hash), nil
+}
+
+func comparePassword(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+func createJWT(secret []byte, userID string) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+	claims["user_id"] = userID
+
+	tokenStr, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenStr, nil
 }

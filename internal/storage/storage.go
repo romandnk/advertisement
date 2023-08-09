@@ -7,6 +7,7 @@ import (
 
 type UserStorage interface {
 	CreateUser(ctx context.Context, user models.User) (string, error)
+	GetUserByEmail(ctx context.Context, email string) (models.User, error)
 }
 
 type AdvertStorage interface {
