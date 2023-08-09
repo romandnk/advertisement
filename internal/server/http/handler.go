@@ -27,6 +27,10 @@ func (h *Handler) InitRoutes() *chi.Mux {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
+			r.Route("/users", func(r chi.Router) {
+				r.Post("/sign-up", h.SignUp)
+			})
+
 			r.Route("/adverts", func(r chi.Router) {
 				r.Post("/", h.CreateAdvert)
 				r.Delete("/{id}", h.DeleteAdvert)

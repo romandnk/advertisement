@@ -8,7 +8,6 @@ import (
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/romandnk/advertisement/internal/storage"
 	"go.uber.org/zap"
-	"os"
 	"strings"
 	"time"
 )
@@ -77,11 +76,6 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 	return id, nil
 }
 
-func saveImage(image *models.Image, path string) error {
-	err := os.WriteFile(path+image.ID+".jpg", image.Data, 0o644)
-	return err
-}
-
 func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
@@ -101,12 +95,4 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	}
 
 	return nil
-}
-
-func deleteImage(imageID string, path string) error {
-	pathImage := path + imageID + ".jpg"
-	if _, err := os.Stat(pathImage); os.IsNotExist(err) {
-		return nil
-	}
-	return os.Remove(pathImage)
 }

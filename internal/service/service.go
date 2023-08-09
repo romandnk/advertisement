@@ -9,21 +9,28 @@ import (
 	"github.com/romandnk/advertisement/internal/storage"
 )
 
+type User interface {
+	SignUp(ctx context.Context, user models.User) (string, error)
+}
+
 type Advert interface {
 	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
 	DeleteAdvert(ctx context.Context, id string) error
 }
 
 type Services interface {
+	User
 	Advert
 }
 
 type Service struct {
+	User
 	Advert
 }
 
 func NewService(storage storage.Storage, logger logger.Logger) *Service {
 	return &Service{
+		NewUserService(storage, logger),
 		NewAdvertService(storage, logger),
 	}
 }
