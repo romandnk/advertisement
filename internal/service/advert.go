@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-var pathToImages = "static/images/"
-
 type AdvertService struct {
-	advert storage.AdvertStorage
-	logger logger.Logger
+	advert       storage.AdvertStorage
+	logger       logger.Logger
+	pathToImages string
 }
 
-func NewAdvertService(advert storage.AdvertStorage, logger logger.Logger) *AdvertService {
+func NewAdvertService(advert storage.AdvertStorage, logger logger.Logger, pathToImages string) *AdvertService {
 	return &AdvertService{
-		advert: advert,
-		logger: logger,
+		advert:       advert,
+		logger:       logger,
+		pathToImages: pathToImages,
 	}
 }
 
@@ -53,7 +53,7 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 	for _, image := range advert.Images {
 		image.ID = uuid.New().String()
 		image.CreatedAt = now
-		err := saveImage(image, pathToImages)
+		err := saveImage(image, a.pathToImages)
 		if err != nil {
 			return "", custom_error.CustomError{Field: "images", Message: err.Error()}
 		}
@@ -62,7 +62,7 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 	id, err := a.advert.CreateAdvert(ctx, advert)
 	if err != nil {
 		for _, image := range advert.Images {
-			err := deleteImage(image.ID, pathToImages)
+			err := deleteImage(image.ID, a.pathToImages)
 			if err != nil {
 				return "", err
 			}
@@ -85,7 +85,7 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	}
 
 	for _, imageID := range imageIDs {
-		err := deleteImage(imageID, pathToImages)
+		err := deleteImage(imageID, a.pathToImages)
 		if err != nil {
 			a.logger.Error("error", zap.Error(err))
 		}

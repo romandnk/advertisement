@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
 	"go.uber.org/zap/zapcore"
+	"os"
 	"strings"
 	"time"
 )
@@ -32,12 +33,15 @@ var (
 	ErrZapLoggerInvalidEncoding      = errors.New("zap logger: invalid encoding (json, console, consoleColor)")
 	ErrZapLoggerEmptyOutputPath      = errors.New("zap logger: empty output path")
 	ErrZapLoggerEmptyErrorOutputPath = errors.New("zap logger: empty error output path")
+	ErrPathImagesNotExist            = errors.New("images path: path does not exist")
+	ErrPathImagesIsNotDir            = errors.New("images path: path is not a dir")
 )
 
 type Config struct {
-	Postgres  PostgresConf
-	Server    ServerConf
-	ZapLogger ZapLoggerConf
+	Postgres     PostgresConf
+	Server       ServerConf
+	ZapLogger    ZapLoggerConf
+	PathToImages string
 }
 
 type PostgresConf struct {
@@ -106,10 +110,16 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	pathToImages := viper.GetString("path_to_images")
+	if err := validatePathToImages(pathToImages); err != nil {
+		return nil, err
+	}
+
 	config := Config{
-		Postgres:  postgres,
-		Server:    server,
-		ZapLogger: zapLogger,
+		Postgres:     postgres,
+		Server:       server,
+		ZapLogger:    zapLogger,
+		PathToImages: pathToImages,
 	}
 
 	return &config, nil
@@ -287,5 +297,20 @@ func validateZapLoggerConf(cfg ZapLoggerConf) error {
 		return ErrZapLoggerEmptyErrorOutputPath
 	}
 
+	return nil
+}
+
+func validatePathToImages(path string) error {
+	info, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return ErrPathImagesNotExist
+	} else if err != nil {
+		return err
+	} else {
+		if !info.IsDir() {
+			return ErrPathImagesIsNotDir
+		}
+	}
 	return nil
 }

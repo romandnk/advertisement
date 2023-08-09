@@ -19,3 +19,5 @@ postgres:
   min_conns: 3
   max_conn_lifetime: "1h"
   max_conn_idle_time: "1m"
+
+path_to_images: "static/images/"
