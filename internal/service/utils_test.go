@@ -5,6 +5,7 @@ import (
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	"os"
 	"testing"
 	"time"
@@ -214,4 +215,12 @@ func TestContainLowerCaseSymbol(t *testing.T) {
 			require.Equal(t, tc.expectedResult, result)
 		})
 	}
+}
+
+func TestComparePassword(t *testing.T) {
+	pwd := "Qwerty123"
+	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
+	require.NoError(t, err)
+	ok := comparePassword(pwd, string(hash))
+	require.True(t, ok)
 }

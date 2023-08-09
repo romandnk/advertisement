@@ -80,7 +80,16 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 	advert.Title = title
 	advert.Description = description
 	advert.Price = price
-	advert.UserID = r.Context().Value("user_id").(string)
+	userID := r.Context().Value("user_id")
+	switch userID.(type) {
+	case string:
+		advert.UserID = userID.(string)
+	default:
+		resp := newResponse("user_id", "invalid user id ctx", err)
+		h.logError(resp.Message, createAdvertAction, resp.Error)
+		renderResponse(w, r, http.StatusInternalServerError, resp)
+		return
+	}
 	advert.Images = images
 
 	id, err := h.service.CreateAdvert(r.Context(), advert)

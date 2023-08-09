@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-const url = "/api/v1/adverts"
+const urlAdverts = "/api/v1/adverts"
 
 func TestHandlerCreateAdvert(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -28,13 +28,15 @@ func TestHandlerCreateAdvert(t *testing.T) {
 
 	services := mock_service.NewMockServices(ctrl)
 
+	expectedID := uuid.New().String()
+	expectedUserID := uuid.New().String()
+
 	expectedAdvert := models.Advert{
 		Title:       "test create",
 		Description: "test create",
 		Price:       decimal.New(1200, 0),
+		UserID:      expectedUserID,
 	}
-
-	expectedID := uuid.New().String()
 
 	ctx := context.Background()
 
@@ -43,7 +45,7 @@ func TestHandlerCreateAdvert(t *testing.T) {
 	handler := NewHandler(services, nil)
 
 	r := chi.NewRouter()
-	r.Post(url, handler.CreateAdvert)
+	r.Post(urlAdverts, handler.CreateAdvert)
 
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
@@ -64,11 +66,12 @@ func TestHandlerCreateAdvert(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bodyBuf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts, bodyBuf)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", bodyWriter.FormDataContentType())
+	ctx = context.WithValue(ctx, "user_id", expectedUserID)
 
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, req.WithContext(ctx))
 
 	require.Equal(t, http.StatusCreated, w.Code)
 
@@ -117,6 +120,20 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 				"error":   "can't convert invalid price to decimal: exponent is not numeric",
 			},
 		},
+		{
+			name:          "empty user id",
+			message:       "invalid user id ctx",
+			expectedError: "",
+			expectedAdvert: map[string]string{
+				"price": "1200",
+			},
+			code:        http.StatusInternalServerError,
+			contentType: "multipart/form-data",
+			responseBody: map[string]interface{}{
+				"field":   "user_id",
+				"message": "invalid user id ctx",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -134,7 +151,7 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 
 			handler := NewHandler(services, logger)
 			r := chi.NewRouter()
-			r.Post(url, handler.CreateAdvert)
+			r.Post(urlAdverts, handler.CreateAdvert)
 
 			bodyBuf := &bytes.Buffer{}
 			bodyWriter := multipart.NewWriter(bodyBuf)
@@ -157,8 +174,11 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bodyBuf)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts, bodyBuf)
 			require.NoError(t, err)
+			if tc.name != "empty user id" {
+				ctx = context.WithValue(ctx, "user_id", "test_user")
+			}
 
 			switch tc.contentType {
 			case "multipart/form-data":
@@ -167,7 +187,7 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 				req.Header.Set("Content-Type", tc.contentType)
 			}
 
-			r.ServeHTTP(w, req)
+			r.ServeHTTP(w, req.WithContext(ctx))
 
 			require.Equal(t, tc.code, w.Code)
 
@@ -194,6 +214,7 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 				Title:       "",
 				Description: "test",
 				Price:       decimal.New(1200, 0),
+				UserID:      "test_user",
 			},
 			expectedError: custom_error.CustomError{
 				Field:   "title",
@@ -211,6 +232,7 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 				Title:       "test",
 				Description: "test",
 				Price:       decimal.New(-1200, 0),
+				UserID:      "test_user",
 			},
 			expectedError: custom_error.CustomError{
 				Field:   "price",
@@ -240,7 +262,7 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 
 			handler := NewHandler(services, logger)
 			r := chi.NewRouter()
-			r.Post(url, handler.CreateAdvert)
+			r.Post(urlAdverts, handler.CreateAdvert)
 
 			bodyBuf := &bytes.Buffer{}
 			bodyWriter := multipart.NewWriter(bodyBuf)
@@ -263,12 +285,13 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bodyBuf)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts, bodyBuf)
 			require.NoError(t, err)
+			ctx = context.WithValue(ctx, "user_id", "test_user")
 
 			req.Header.Set("Content-Type", bodyWriter.FormDataContentType())
 
-			r.ServeHTTP(w, req)
+			r.ServeHTTP(w, req.WithContext(ctx))
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
 
@@ -296,11 +319,11 @@ func TestHandlerDeleteAdvert(t *testing.T) {
 	handler := NewHandler(services, nil)
 
 	r := chi.NewRouter()
-	r.Post(url+"/{id}", handler.DeleteAdvert)
+	r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
 
 	w := httptest.NewRecorder()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url+"/"+expectedID, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts+"/"+expectedID, nil)
 	require.NoError(t, err)
 
 	r.ServeHTTP(w, req)
@@ -356,11 +379,11 @@ func TestHandlerDeleteAdvertError(t *testing.T) {
 			handler := NewHandler(services, logger)
 
 			r := chi.NewRouter()
-			r.Post(url+"/{id}", handler.DeleteAdvert)
+			r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
 
 			w := httptest.NewRecorder()
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url+"/"+tc.id, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts+"/"+tc.id, nil)
 			require.NoError(t, err)
 
 			r.ServeHTTP(w, req)
