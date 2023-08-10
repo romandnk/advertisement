@@ -18,12 +18,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-const (
-	urlAdverts = "/api/v1/adverts"
-	secretTest = "test"
-)
+const urlAdverts = "/api/v1/adverts"
 
 func TestHandlerCreateAdvert(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -45,7 +43,7 @@ func TestHandlerCreateAdvert(t *testing.T) {
 
 	services.EXPECT().CreateAdvert(gomock.Any(), expectedAdvert).Return(expectedID, nil)
 
-	handler := NewHandler(services, nil, secretTest)
+	handler := NewHandler(services, nil, " ")
 
 	r := chi.NewRouter()
 	r.Post(urlAdverts, handler.CreateAdvert)
@@ -152,7 +150,7 @@ func TestHandlerCreateAdvertError(t *testing.T) {
 				zap.String("error", tc.expectedError),
 			)
 
-			handler := NewHandler(services, logger, secretTest)
+			handler := NewHandler(services, logger, " ")
 			r := chi.NewRouter()
 			r.Post(urlAdverts, handler.CreateAdvert)
 
@@ -263,7 +261,7 @@ func TestHandlerCreateAdvertErrorCreatingAdvert(t *testing.T) {
 				zap.String("error", tc.expectedError.Error()),
 			)
 
-			handler := NewHandler(services, logger, secretTest)
+			handler := NewHandler(services, logger, " ")
 			r := chi.NewRouter()
 			r.Post(urlAdverts, handler.CreateAdvert)
 
@@ -319,7 +317,7 @@ func TestHandlerDeleteAdvert(t *testing.T) {
 
 	services.EXPECT().DeleteAdvert(gomock.Any(), expectedID).Return(nil)
 
-	handler := NewHandler(services, nil, secretTest)
+	handler := NewHandler(services, nil, " ")
 
 	r := chi.NewRouter()
 	r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
@@ -379,7 +377,7 @@ func TestHandlerDeleteAdvertError(t *testing.T) {
 				zap.String("error", tc.expectedError.Error()),
 			)
 
-			handler := NewHandler(services, logger, secretTest)
+			handler := NewHandler(services, logger, " ")
 
 			r := chi.NewRouter()
 			r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
@@ -408,23 +406,62 @@ func TestHandlerGetAdvertByID(t *testing.T) {
 
 	services := mock_service.NewMockServices(ctrl)
 
-	expectedID := uuid.New().String()
+	expectedAdvertID := uuid.New().String()
+	expectedImageID := uuid.New().String()
+	tm := time.Date(2023, time.August, 11, 0, 35, 14, 340105741, time.UTC)
+
+	expectedAdvert := models.Advert{
+		ID:          expectedAdvertID,
+		Title:       "test",
+		Description: "test",
+		Price:       decimal.New(1200, 0),
+		CreatedAt:   tm,
+		UpdatedAt:   tm,
+		UserID:      uuid.New().String(),
+		Deleted:     false,
+		Images: []*models.Image{
+			{
+				ID:        expectedImageID,
+				Data:      nil,
+				AdvertID:  expectedAdvertID,
+				CreatedAt: tm,
+				Deleted:   false,
+			},
+		},
+	}
 
 	ctx := context.Background()
 
-	services.EXPECT().DeleteAdvert(gomock.Any(), expectedID).Return(nil)
+	services.EXPECT().GetAdvertByID(gomock.Any(), expectedAdvertID).Return(expectedAdvert, nil)
 
-	handler := NewHandler(services, nil, secretTest)
+	handler := NewHandler(services, nil, " ")
 
 	r := chi.NewRouter()
-	r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
+	r.Get(urlAdverts+"/{id}", handler.GetAdvertByID)
 
 	w := httptest.NewRecorder()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts+"/"+expectedID, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlAdverts+"/"+expectedAdvertID, nil)
 	require.NoError(t, err)
 
 	r.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
+
+	var responseBody map[string]interface{}
+	err = json.Unmarshal(w.Body.Bytes(), &responseBody)
+	require.NoError(t, err)
+
+	expectedResponse := map[string]interface{}{
+		"id":          expectedAdvertID,
+		"title":       "test",
+		"description": "test",
+		"price":       "1200",
+		"created_at":  tm.Format(time.RFC3339Nano),
+		"updated_at":  tm.Format(time.RFC3339Nano),
+		"user_id":     expectedAdvert.UserID,
+		"image_urls":  []interface{}{"http://:/api/v1/images/" + expectedImageID},
+	}
+
+	require.Equal(t, expectedResponse, responseBody)
 }
