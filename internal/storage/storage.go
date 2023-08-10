@@ -12,7 +12,8 @@ type UserStorage interface {
 
 type AdvertStorage interface {
 	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
-	DeleteAdvert(ctx context.Context, id string) ([]string, error)
+	GetAdvertByID(ctx context.Context, id string) (models.Advert, error)
+	DeleteAdvert(ctx context.Context, advertID, userID string) ([]string, error)
 }
 
 type Storage interface {

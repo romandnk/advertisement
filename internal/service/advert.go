@@ -79,7 +79,15 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 		return custom_error.CustomError{Field: "id", Message: err.Error()}
 	}
 
-	imageIDs, err := a.advert.DeleteAdvert(ctx, parsedID.String())
+	var userID string
+	switch ctx.Value("user_id").(type) {
+	case string:
+		userID = ctx.Value("user_id").(string)
+	default:
+		return custom_error.CustomError{Field: "user_id", Message: "no user id"}
+	}
+
+	imageIDs, err := a.advert.DeleteAdvert(ctx, parsedID.String(), userID)
 	if err != nil {
 		return err
 	}
@@ -92,4 +100,12 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (a *AdvertService) GetAdvertByID(ctx context.Context, id string) (models.Advert, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return models.Advert{}, custom_error.CustomError{Field: "id", Message: err.Error()}
+	}
+	return a.advert.GetAdvertByID(ctx, parsedID.String())
 }

@@ -9,6 +9,11 @@ import (
 	"github.com/romandnk/advertisement/internal/models"
 )
 
+var (
+	ErrUserNotCreated   = errors.New("user was not created")
+	ErrUserInvalidEmail = errors.New("invalid email")
+)
+
 func (s *PostgresStorage) CreateUser(ctx context.Context, user models.User) (string, error) {
 	query := fmt.Sprintf(`
 			INSERT INTO %s (id, email, password, created_at, updated_at, deleted)
@@ -21,7 +26,7 @@ func (s *PostgresStorage) CreateUser(ctx context.Context, user models.User) (str
 	}
 
 	if ct.RowsAffected() == 0 {
-		return "", custom_error.CustomError{Field: "", Message: "user was not created"}
+		return "", custom_error.CustomError{Field: "", Message: ErrUserNotCreated.Error()}
 	}
 
 	return user.ID, nil
@@ -45,7 +50,7 @@ func (s *PostgresStorage) GetUserByEmail(ctx context.Context, email string) (mod
 		&user.Deleted)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return user, custom_error.CustomError{Field: "email", Message: "invalid email"}
+			return user, custom_error.CustomError{Field: "email", Message: ErrUserInvalidEmail.Error()}
 		}
 		return user, custom_error.CustomError{Field: "", Message: err.Error()}
 	}

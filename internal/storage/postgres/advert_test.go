@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
@@ -36,18 +35,18 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 		}},
 	}
 
-	queryAdvert := fmt.Sprintf(`
+	insertAdvert := fmt.Sprintf(`
 				INSERT INTO %s (id, title, description, price, created_at, updated_at, user_id, deleted)
 				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, advertsTable)
 
-	queryImage := fmt.Sprintf(`
+	insertImage := fmt.Sprintf(`
 				INSERT INTO %s (id, advert_id, created_at, deleted)
 				VALUES ($1, $2, $3, $4)
 	`, imagesTable)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(queryAdvert)).WithArgs(
+	mock.ExpectExec(regexp.QuoteMeta(insertAdvert)).WithArgs(
 		advert.ID,
 		advert.Title,
 		advert.Description,
@@ -57,7 +56,7 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 		advert.UserID,
 		advert.Deleted,
 	).WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryImage)).WithArgs(
+	mock.ExpectExec(regexp.QuoteMeta(insertImage)).WithArgs(
 		advert.Images[0].ID,
 		advert.ID,
 		advert.Images[0].CreatedAt,
@@ -79,17 +78,20 @@ func TestPostgresStorageDeleteAdvert(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
-	id := uuid.New().String()
+	advertID := uuid.New().String()
+	userID := uuid.New().String()
 
 	updateAdverts := fmt.Sprintf(`
 				UPDATE %s
 				SET deleted = TRUE
-				WHERE id = $1`, advertsTable)
+				WHERE id = $1 AND user_id = $2
+	`, advertsTable)
 
 	updateImages := fmt.Sprintf(`
 				UPDATE %s
 				SET deleted = TRUE
-				WHERE advert_id = $1 RETURNING id`, imagesTable)
+				WHERE advert_id = $1 RETURNING id
+	`, imagesTable)
 
 	columns := []string{"id"}
 	rows := pgxmock.NewRows(columns).
@@ -98,13 +100,13 @@ func TestPostgresStorageDeleteAdvert(t *testing.T) {
 		AddRow("test id 3")
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(id).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectQuery(regexp.QuoteMeta(updateImages)).WithArgs(id).WillReturnRows(rows)
+	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(advertID, userID).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectQuery(regexp.QuoteMeta(updateImages)).WithArgs(advertID).WillReturnRows(rows)
 	mock.ExpectCommit()
 
 	storage := NewPostgresStorage(mock)
 
-	images, err := storage.DeleteAdvert(context.Background(), id)
+	images, err := storage.DeleteAdvert(context.Background(), advertID, userID)
 	require.NoError(t, err)
 
 	expectedImages := []string{"test id 1", "test id 2", "test id 3"}
@@ -118,22 +120,94 @@ func TestPostgresStorageDeleteAdvertError(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
-	id := uuid.New().String()
+	advertID := uuid.New().String()
+	userID := uuid.New().String()
 
 	updateAdverts := fmt.Sprintf(`
 				UPDATE %s
 				SET deleted = TRUE
-				WHERE id = $1`, advertsTable)
+				WHERE id = $1 AND user_id = $2
+	`, advertsTable)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(id).WillReturnError(pgx.ErrNoRows)
+	mock.ExpectExec(regexp.QuoteMeta(updateAdverts)).WithArgs(advertID, userID).WillReturnError(ErrAdvertNotFound)
 	mock.ExpectRollback()
 
 	storage := NewPostgresStorage(mock)
 
-	images, err := storage.DeleteAdvert(context.Background(), id)
-	require.EqualError(t, err, pgx.ErrNoRows.Error())
+	images, err := storage.DeleteAdvert(context.Background(), advertID, userID)
+	require.ErrorIs(t, err, ErrAdvertNotFound)
 	require.Len(t, images, 0)
+
+	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
+}
+
+func TestPostgresStorageGetAdvertByID(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mock.Close()
+
+	query := fmt.Sprintf(`
+				SELECT id, title, description, price, created_at, updated_at, user_id
+				FROM %s
+				WHERE id = $1 AND deleted = false
+	`, advertsTable)
+
+	expectedID := uuid.New().String()
+
+	expectedAdvert := models.Advert{
+		ID:          expectedID,
+		Title:       "test",
+		Description: "test",
+		Price:       decimal.New(1200, 0),
+		CreatedAt:   time.Time{},
+		UpdatedAt:   time.Time{},
+		UserID:      uuid.New().String(),
+	}
+
+	columns := []string{"id", "title", "desctiption", "price", "created_at", "updated_at", "user_id"}
+	rows := pgxmock.NewRows(columns).
+		AddRow(expectedID,
+			expectedAdvert.Title,
+			expectedAdvert.Description,
+			expectedAdvert.Price,
+			expectedAdvert.CreatedAt,
+			expectedAdvert.UpdatedAt,
+			expectedAdvert.UserID)
+
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expectedID).WillReturnRows(rows)
+
+	storage := NewPostgresStorage(mock)
+
+	advert, err := storage.GetAdvertByID(context.Background(), expectedID)
+	require.NoError(t, err)
+	require.Equal(t, expectedAdvert, advert)
+
+	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
+}
+
+func TestPostgresStorageGetAdvertByIDError(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mock.Close()
+
+	query := fmt.Sprintf(`
+				SELECT id, title, description, price, created_at, updated_at, user_id
+				FROM %s
+				WHERE id = $1 AND deleted = false
+	`, advertsTable)
+
+	expectedID := uuid.New().String()
+
+	expectedAdvert := models.Advert{}
+
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expectedID).WillReturnError(ErrAdvertNotFound)
+
+	storage := NewPostgresStorage(mock)
+
+	advert, err := storage.GetAdvertByID(context.Background(), expectedID)
+	require.ErrorIs(t, err, ErrAdvertNotFound)
+	require.Equal(t, expectedAdvert, advert)
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
 }

@@ -2,22 +2,30 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
 )
 
+var (
+	ErrAdvertNotCreated      = errors.New("advert was not created")
+	ErrAdvertImageNotCreated = errors.New("image was not created")
+	ErrAdvertNotFound        = errors.New("advert not found")
+)
+
 func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert) (string, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return "", custom_error.CustomError{Field: "", Message: err.Error()}
+		return "", err
 	}
 	defer tx.Rollback(ctx)
 
 	insertAdvert := fmt.Sprintf(`
 				INSERT INTO %s (id, title, description, price, created_at, updated_at, user_id, deleted)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, advertsTable)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, advertsTable)
 
 	ct, err := tx.Exec(ctx, insertAdvert,
 		advert.ID,
@@ -30,65 +38,68 @@ func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert
 		advert.Deleted,
 	)
 	if err != nil {
-		return "", custom_error.CustomError{Field: "", Message: err.Error()}
+		return "", err
 	}
 
 	if ct.RowsAffected() == 0 {
-		return "", custom_error.CustomError{Field: "", Message: "advert was not inserted"}
+		return "", custom_error.CustomError{Field: "", Message: ErrAdvertNotCreated.Error()}
 	}
 
 	insertImage := fmt.Sprintf(`
 				INSERT INTO %s (id, advert_id, created_at, deleted)
-				VALUES ($1, $2, $3, $4)`, imagesTable)
+				VALUES ($1, $2, $3, $4)
+	`, imagesTable)
 
 	for _, image := range advert.Images {
 		ct, err := tx.Exec(ctx, insertImage, image.ID, advert.ID, image.CreatedAt, image.Deleted)
 		if err != nil {
-			return "", custom_error.CustomError{Field: "", Message: err.Error()}
+			return "", err
 		}
 		if ct.RowsAffected() == 0 {
-			return "", custom_error.CustomError{Field: "images", Message: "image was not inserted"}
+			return "", custom_error.CustomError{Field: "images", Message: ErrAdvertImageNotCreated.Error()}
 		}
 
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return "", custom_error.CustomError{Field: "", Message: err.Error()}
+		return "", err
 	}
 
 	return advert.ID, nil
 }
 
-func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) ([]string, error) {
+func (s *PostgresStorage) DeleteAdvert(ctx context.Context, advertID, userID string) ([]string, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return nil, custom_error.CustomError{Field: "", Message: err.Error()}
+		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	updateAdverts := fmt.Sprintf(`
 				UPDATE %s
 				SET deleted = TRUE
-				WHERE id = $1`, advertsTable)
+				WHERE id = $1 AND user_id = $2
+	`, advertsTable)
 
-	ct, err := tx.Exec(ctx, updateAdverts, id)
+	ct, err := tx.Exec(ctx, updateAdverts, advertID, userID)
 	if err != nil {
-		return nil, custom_error.CustomError{Field: "", Message: err.Error()}
+		return nil, err
 	}
 
 	if ct.RowsAffected() == 0 {
-		return nil, custom_error.CustomError{Field: "id", Message: pgx.ErrNoRows.Error()}
+		return nil, custom_error.CustomError{Field: "id", Message: ErrAdvertNotFound.Error()}
 	}
 
 	updateImages := fmt.Sprintf(`
 				UPDATE %s
 				SET deleted = TRUE
-				WHERE advert_id = $1 RETURNING id`, imagesTable)
+				WHERE advert_id = $1 RETURNING id
+	`, imagesTable)
 
-	rows, err := tx.Query(ctx, updateImages, id)
+	rows, err := tx.Query(ctx, updateImages, advertID)
 	if err != nil {
-		return nil, custom_error.CustomError{Field: "", Message: err.Error()}
+		return nil, err
 	}
 
 	var imageIDs []string
@@ -98,7 +109,7 @@ func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) ([]string
 
 		err = rows.Scan(&imageID)
 		if err != nil {
-			return nil, custom_error.CustomError{Field: "", Message: err.Error()}
+			return nil, err
 		}
 
 		imageIDs = append(imageIDs, imageID)
@@ -106,8 +117,35 @@ func (s *PostgresStorage) DeleteAdvert(ctx context.Context, id string) ([]string
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, custom_error.CustomError{Field: "", Message: err.Error()}
+		return nil, err
 	}
 
 	return imageIDs, nil
+}
+
+func (s *PostgresStorage) GetAdvertByID(ctx context.Context, id string) (models.Advert, error) {
+	var advert models.Advert
+
+	query := fmt.Sprintf(`
+				SELECT id, title, description, price, created_at, updated_at, user_id
+				FROM %s
+				WHERE id = $1 AND deleted = false
+	`, advertsTable)
+
+	err := s.db.QueryRow(ctx, query, id).Scan(
+		&advert.ID,
+		&advert.Title,
+		&advert.Description,
+		&advert.Price,
+		&advert.CreatedAt,
+		&advert.UpdatedAt,
+		&advert.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return advert, custom_error.CustomError{Field: "id", Message: ErrAdvertNotFound.Error()}
+		}
+		return advert, err
+	}
+
+	return advert, nil
 }

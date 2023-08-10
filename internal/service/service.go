@@ -17,6 +17,7 @@ type User interface {
 type Advert interface {
 	CreateAdvert(ctx context.Context, advert models.Advert) (string, error)
 	DeleteAdvert(ctx context.Context, id string) error
+	GetAdvertByID(ctx context.Context, id string) (models.Advert, error)
 }
 
 type Services interface {

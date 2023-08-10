@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
@@ -101,14 +100,15 @@ func TestPostgresStorageGetUserByEmailError(t *testing.T) {
 
 	expectedUser := models.User{}
 
-	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expectedUser.Email).WillReturnError(pgx.ErrNoRows)
+	expectedError := custom_error.CustomError{Field: "email", Message: ErrUserInvalidEmail.Error()}
+
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expectedUser.Email).WillReturnError(expectedError)
 
 	storage := NewPostgresStorage(mock)
 	ctx := context.Background()
 
 	user, err := storage.GetUserByEmail(ctx, expectedUser.Email)
-	expectedError := custom_error.CustomError{Field: "email", Message: "invalid email"}
-	require.ErrorIs(t, err, expectedError)
+	require.EqualError(t, err, expectedError.Error())
 	require.Equal(t, expectedUser, user)
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")

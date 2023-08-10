@@ -117,6 +117,21 @@ func (mr *MockAdvertMockRecorder) DeleteAdvert(ctx, id interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAdvert", reflect.TypeOf((*MockAdvert)(nil).DeleteAdvert), ctx, id)
 }
 
+// GetAdvertByID mocks base method.
+func (m *MockAdvert) GetAdvertByID(ctx context.Context, id string) (models.Advert, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAdvertByID", ctx, id)
+	ret0, _ := ret[0].(models.Advert)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAdvertByID indicates an expected call of GetAdvertByID.
+func (mr *MockAdvertMockRecorder) GetAdvertByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdvertByID", reflect.TypeOf((*MockAdvert)(nil).GetAdvertByID), ctx, id)
+}
+
 // MockServices is a mock of Services interface.
 type MockServices struct {
 	ctrl     *gomock.Controller
@@ -167,6 +182,21 @@ func (m *MockServices) DeleteAdvert(ctx context.Context, id string) error {
 func (mr *MockServicesMockRecorder) DeleteAdvert(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAdvert", reflect.TypeOf((*MockServices)(nil).DeleteAdvert), ctx, id)
+}
+
+// GetAdvertByID mocks base method.
+func (m *MockServices) GetAdvertByID(ctx context.Context, id string) (models.Advert, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAdvertByID", ctx, id)
+	ret0, _ := ret[0].(models.Advert)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAdvertByID indicates an expected call of GetAdvertByID.
+func (mr *MockServicesMockRecorder) GetAdvertByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdvertByID", reflect.TypeOf((*MockServices)(nil).GetAdvertByID), ctx, id)
 }
 
 // SignIn mocks base method.
