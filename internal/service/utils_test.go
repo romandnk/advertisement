@@ -224,3 +224,32 @@ func TestComparePassword(t *testing.T) {
 	ok := comparePassword(pwd, string(hash))
 	require.True(t, ok)
 }
+
+func TestFindImageByID(t *testing.T) {
+	dir := t.TempDir()
+
+	file, err := os.CreateTemp(dir, "")
+	require.NoError(t, err)
+	defer file.Close()
+	defer os.Remove(file.Name())
+
+	expectedData := []byte("this is jpg")
+	_, err = file.Write(expectedData)
+	require.NoError(t, err)
+
+	info, err := file.Stat()
+	require.NoError(t, err)
+
+	err = os.Rename(dir+"/"+info.Name(), dir+"/"+"id.jpg")
+	require.NoError(t, err)
+
+	data, err := findImageByID(dir, "id")
+	require.NoError(t, err)
+	require.ElementsMatch(t, data, expectedData)
+}
+
+func TestFindImageByIDError(t *testing.T) {
+	data, err := findImageByID("random dir", "random_id")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.ElementsMatch(t, data, []byte{})
+}

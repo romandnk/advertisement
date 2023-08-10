@@ -20,19 +20,26 @@ type Advert interface {
 	GetAdvertByID(ctx context.Context, id string) (models.Advert, error)
 }
 
+type Image interface {
+	GetImageByID(ctx context.Context, id string) (models.Image, error)
+}
+
 type Services interface {
 	User
 	Advert
+	Image
 }
 
 type Service struct {
 	User
 	Advert
+	Image
 }
 
 func NewService(storage storage.Storage, logger logger.Logger, secretKey, pathToImages string) *Service {
 	return &Service{
 		NewUserService(storage, logger, secretKey),
 		NewAdvertService(storage, logger, pathToImages),
+		NewImageService(storage, logger, pathToImages),
 	}
 }

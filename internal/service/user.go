@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var ErrUserServiceInvalidPassword = errors.New("invalid password")
+
 type UserService struct {
 	user      storage.UserStorage
 	logger    logger.Logger
@@ -66,7 +68,7 @@ func (u *UserService) SignIn(ctx context.Context, email, password string) (strin
 	}
 
 	if !comparePassword(password, user.Password) {
-		return "", custom_error.CustomError{Field: "password", Message: "invalid password"}
+		return "", custom_error.CustomError{Field: "password", Message: ErrUserServiceInvalidPassword.Error()}
 	}
 
 	token, err := createJWT([]byte(u.secretKey), user.ID)

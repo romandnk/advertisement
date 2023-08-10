@@ -401,3 +401,30 @@ func TestHandlerDeleteAdvertError(t *testing.T) {
 		})
 	}
 }
+
+func TestHandlerGetAdvertByID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	services := mock_service.NewMockServices(ctrl)
+
+	expectedID := uuid.New().String()
+
+	ctx := context.Background()
+
+	services.EXPECT().DeleteAdvert(gomock.Any(), expectedID).Return(nil)
+
+	handler := NewHandler(services, nil, secretTest)
+
+	r := chi.NewRouter()
+	r.Post(urlAdverts+"/{id}", handler.DeleteAdvert)
+
+	w := httptest.NewRecorder()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlAdverts+"/"+expectedID, nil)
+	require.NoError(t, err)
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}

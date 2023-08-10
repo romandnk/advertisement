@@ -51,7 +51,7 @@ func (s *PostgresStorage) CreateAdvert(ctx context.Context, advert models.Advert
 	`, imagesTable)
 
 	for _, image := range advert.Images {
-		ct, err := tx.Exec(ctx, insertImage, image.ID, advert.ID, image.CreatedAt, image.Deleted)
+		ct, err := tx.Exec(ctx, insertImage, image.ID, image.AdvertID, image.CreatedAt, image.Deleted)
 		if err != nil {
 			return "", err
 		}
@@ -125,12 +125,23 @@ func (s *PostgresStorage) DeleteAdvert(ctx context.Context, advertID, userID str
 
 func (s *PostgresStorage) GetAdvertByID(ctx context.Context, id string) (models.Advert, error) {
 	var advert models.Advert
+	var imageIDs []string
 
 	query := fmt.Sprintf(`
-				SELECT id, title, description, price, created_at, updated_at, user_id
-				FROM %s
-				WHERE id = $1 AND deleted = false
-	`, advertsTable)
+				SELECT
+    			a.id,
+    			a.title,
+    			a.description,
+    			a.price,
+    			a.created_at,
+    			a.updated_at,
+    			a.user_id,
+    			ARRAY_AGG(i.id) as images
+				FROM %s a
+				JOIN %s i ON a.id = i.advert_id
+				WHERE a.id = $1 AND a.deleted = false AND i.deleted = false
+				GROUP BY a.id
+	`, advertsTable, imagesTable)
 
 	err := s.db.QueryRow(ctx, query, id).Scan(
 		&advert.ID,
@@ -139,7 +150,13 @@ func (s *PostgresStorage) GetAdvertByID(ctx context.Context, id string) (models.
 		&advert.Price,
 		&advert.CreatedAt,
 		&advert.UpdatedAt,
-		&advert.UserID)
+		&advert.UserID,
+		&imageIDs)
+
+	for _, imageID := range imageIDs {
+		advert.Images = append(advert.Images, &models.Image{ID: imageID})
+	}
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return advert, custom_error.CustomError{Field: "id", Message: ErrAdvertNotFound.Error()}

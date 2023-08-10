@@ -40,9 +40,13 @@ func (h *Handler) InitRoutes() *chi.Mux {
 				r.Delete("/{id}", h.DeleteAdvert)
 			})
 
-			//r.Route("/adverts", func(r chi.Router) {
-			//	r.Get("/{id}")
-			//})
+			r.Group(func(r chi.Router) {
+				r.Get("/adverts/{id}", h.GetAdvertByID)
+			})
+
+			r.Route("/images", func(r chi.Router) {
+				r.Get("/{id}", h.GetImageByID)
+			})
 		})
 	})
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/logger"
@@ -10,6 +11,14 @@ import (
 	"go.uber.org/zap"
 	"strings"
 	"time"
+)
+
+var (
+	ErrAdvertServiceEmptyTitle    = errors.New("empty title")
+	ErrAdvertServiceNegativePrice = errors.New("negative price")
+	ErrAdvertServiceNoImages      = errors.New("no images")
+	ErrAdvertServiceManyImages    = errors.New("max number of images is 7")
+	ErrAdvertServiceNoUserID      = errors.New("no user id")
 )
 
 type AdvertService struct {
@@ -31,27 +40,28 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 
 	advert.Title = strings.TrimSpace(advert.Title)
 	if advert.Title == "" {
-		return "", custom_error.CustomError{Field: "title", Message: "empty title"}
+		return "", custom_error.CustomError{Field: "title", Message: ErrAdvertServiceEmptyTitle.Error()}
 	}
 
 	advert.Description = strings.TrimSpace(advert.Description)
 
 	if advert.Price.IsNegative() {
-		return "", custom_error.CustomError{Field: "price", Message: "negative price"}
+		return "", custom_error.CustomError{Field: "price", Message: ErrAdvertServiceNegativePrice.Error()}
 	}
 
 	now := time.Now()
 	advert.CreatedAt = now
 	advert.UpdatedAt = now
 	if len(advert.Images) == 0 {
-		return "", custom_error.CustomError{Field: "images", Message: "no images"}
+		return "", custom_error.CustomError{Field: "images", Message: ErrAdvertServiceNoImages.Error()}
 	}
 	if len(advert.Images) > 7 {
-		return "", custom_error.CustomError{Field: "images", Message: "max number of images is 7"}
+		return "", custom_error.CustomError{Field: "images", Message: ErrAdvertServiceManyImages.Error()}
 	}
 
 	for _, image := range advert.Images {
 		image.ID = uuid.New().String()
+		image.AdvertID = advert.ID
 		image.CreatedAt = now
 		err := saveImage(image, a.pathToImages)
 		if err != nil {
@@ -64,7 +74,7 @@ func (a *AdvertService) CreateAdvert(ctx context.Context, advert models.Advert) 
 		for _, image := range advert.Images {
 			err := deleteImage(image.ID, a.pathToImages)
 			if err != nil {
-				return "", err
+				a.logger.Error("error deleting image while creating advert", zap.String("error", err.Error()))
 			}
 		}
 		return "", err
@@ -84,7 +94,7 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	case string:
 		userID = ctx.Value("user_id").(string)
 	default:
-		return custom_error.CustomError{Field: "user_id", Message: "no user id"}
+		return custom_error.CustomError{Field: "user_id", Message: ErrAdvertServiceNoUserID.Error()}
 	}
 
 	imageIDs, err := a.advert.DeleteAdvert(ctx, parsedID.String(), userID)
@@ -95,7 +105,7 @@ func (a *AdvertService) DeleteAdvert(ctx context.Context, id string) error {
 	for _, imageID := range imageIDs {
 		err := deleteImage(imageID, a.pathToImages)
 		if err != nil {
-			a.logger.Error("error", zap.Error(err))
+			a.logger.Error("error deleting image while deleting advert", zap.String("error", err.Error()))
 		}
 	}
 

@@ -1,19 +1,23 @@
 package http
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/romandnk/advertisement/internal/models"
 	"github.com/shopspring/decimal"
+	"github.com/spf13/viper"
 	"image"
 	_ "image/jpeg"
 	"io"
 	"net/http"
+	"time"
 )
 
 var (
-	createAdvertAction = "create advert"
-	deleteAdvertAction = "delete advert"
+	createAdvertAction  = "create advert"
+	deleteAdvertAction  = "delete advert"
+	getAdvertByIDAction = "get advert by id"
 )
 
 func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
@@ -55,11 +59,14 @@ func (h *Handler) CreateAdvert(w http.ResponseWriter, r *http.Request) {
 
 		_, _, err = image.Decode(file)
 		if err != nil {
+			file.Close()
 			resp := newResponse("images", "image cannot be decoded: "+imageForm.Filename, nil)
 			h.logError(resp.Message, createAdvertAction, resp.Error)
 			renderResponse(w, r, http.StatusBadRequest, resp)
 			return
 		}
+
+		file.Seek(0, 0)
 
 		imageData, err := io.ReadAll(file)
 		if err != nil {
@@ -116,4 +123,47 @@ func (h *Handler) DeleteAdvert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetAdvertByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	advert, err := h.service.GetAdvertByID(r.Context(), id)
+	if err != nil {
+		resp := newResponse("", "error getting advert by id", err)
+		h.logError(resp.Message, getAdvertByIDAction, resp.Error)
+		renderResponse(w, r, http.StatusInternalServerError, resp)
+		return
+	}
+
+	var imageURLs []string
+	host := viper.GetString("server.host")
+	port := viper.GetString("server.port")
+	for _, img := range advert.Images {
+		url := fmt.Sprintf("http://%s:%s/api/v1/images/%s", host, port, img.ID)
+		imageURLs = append(imageURLs, url)
+	}
+
+	jsonResponse := struct {
+		ID          string          `json:"id""`
+		Title       string          `json:"title"`
+		Description string          `json:"description"`
+		Price       decimal.Decimal `json:"price"`
+		CreatedAt   time.Time       `json:"created_at"`
+		UpdatedAt   time.Time       `json:"updated_at"`
+		UserID      string          `json:"user_id"`
+		ImageURLs   []string        `json:"image_urls"`
+	}{
+		ID:          advert.ID,
+		Title:       advert.Title,
+		Description: advert.Description,
+		Price:       advert.Price,
+		CreatedAt:   advert.CreatedAt,
+		UpdatedAt:   advert.UpdatedAt,
+		UserID:      advert.UserID,
+		ImageURLs:   imageURLs,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, jsonResponse)
 }

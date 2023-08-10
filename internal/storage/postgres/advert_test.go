@@ -18,8 +18,9 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
+	advertID := uuid.New().String()
 	advert := models.Advert{
-		ID:          uuid.New().String(),
+		ID:          advertID,
 		Title:       "test title",
 		Description: "test description",
 		Price:       decimal.New(1200, 0),
@@ -30,6 +31,7 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 		Images: []*models.Image{{
 			ID:        uuid.New().String(),
 			Data:      []byte("test data"),
+			AdvertID:  advertID,
 			CreatedAt: time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
 			Deleted:   false,
 		}},
@@ -58,7 +60,7 @@ func TestPostgresStorageCreateAdvert(t *testing.T) {
 	).WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	mock.ExpectExec(regexp.QuoteMeta(insertImage)).WithArgs(
 		advert.Images[0].ID,
-		advert.ID,
+		advert.Images[0].AdvertID,
 		advert.Images[0].CreatedAt,
 		advert.Images[0].Deleted,
 	).WillReturnResult(pgxmock.NewResult("INSERT", 1))
@@ -148,12 +150,23 @@ func TestPostgresStorageGetAdvertByID(t *testing.T) {
 	defer mock.Close()
 
 	query := fmt.Sprintf(`
-				SELECT id, title, description, price, created_at, updated_at, user_id
-				FROM %s
-				WHERE id = $1 AND deleted = false
-	`, advertsTable)
+				SELECT
+    			a.id,
+    			a.title,
+    			a.description,
+    			a.price,
+    			a.created_at,
+    			a.updated_at,
+    			a.user_id,
+    			ARRAY_AGG(i.id) as images
+				FROM %s a
+				JOIN %s i ON a.id = i.advert_id
+				WHERE a.id = $1 AND a.deleted = false AND i.deleted = false
+				GROUP BY a.id
+	`, advertsTable, imagesTable)
 
 	expectedID := uuid.New().String()
+	expectedImageIDs := []string{"id1", "id2"}
 
 	expectedAdvert := models.Advert{
 		ID:          expectedID,
@@ -163,9 +176,17 @@ func TestPostgresStorageGetAdvertByID(t *testing.T) {
 		CreatedAt:   time.Time{},
 		UpdatedAt:   time.Time{},
 		UserID:      uuid.New().String(),
+		Images: []*models.Image{
+			{
+				ID: "id1",
+			},
+			{
+				ID: "id2",
+			},
+		},
 	}
 
-	columns := []string{"id", "title", "desctiption", "price", "created_at", "updated_at", "user_id"}
+	columns := []string{"id", "title", "desctiption", "price", "created_at", "updated_at", "user_id", "images"}
 	rows := pgxmock.NewRows(columns).
 		AddRow(expectedID,
 			expectedAdvert.Title,
@@ -173,7 +194,8 @@ func TestPostgresStorageGetAdvertByID(t *testing.T) {
 			expectedAdvert.Price,
 			expectedAdvert.CreatedAt,
 			expectedAdvert.UpdatedAt,
-			expectedAdvert.UserID)
+			expectedAdvert.UserID,
+			expectedImageIDs)
 
 	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expectedID).WillReturnRows(rows)
 
@@ -182,6 +204,9 @@ func TestPostgresStorageGetAdvertByID(t *testing.T) {
 	advert, err := storage.GetAdvertByID(context.Background(), expectedID)
 	require.NoError(t, err)
 	require.Equal(t, expectedAdvert, advert)
+	for i := 0; i < 2; i++ {
+		require.Equal(t, expectedImageIDs[i], advert.Images[i].ID)
+	}
 
 	require.NoError(t, mock.ExpectationsWereMet(), "there was unexpected result")
 }
@@ -192,10 +217,20 @@ func TestPostgresStorageGetAdvertByIDError(t *testing.T) {
 	defer mock.Close()
 
 	query := fmt.Sprintf(`
-				SELECT id, title, description, price, created_at, updated_at, user_id
-				FROM %s
-				WHERE id = $1 AND deleted = false
-	`, advertsTable)
+				SELECT
+    			a.id,
+    			a.title,
+    			a.description,
+    			a.price,
+    			a.created_at,
+    			a.updated_at,
+    			a.user_id,
+    			ARRAY_AGG(i.id) as images
+				FROM %s a
+				JOIN %s i ON a.id = i.advert_id
+				WHERE a.id = $1 AND a.deleted = false AND i.deleted = false
+				GROUP BY a.id
+	`, advertsTable, imagesTable)
 
 	expectedID := uuid.New().String()
 

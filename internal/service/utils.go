@@ -5,7 +5,10 @@ import (
 	"github.com/romandnk/advertisement/internal/custom_error"
 	"github.com/romandnk/advertisement/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -98,4 +101,35 @@ func createJWT(secret []byte, userID string) (string, error) {
 	}
 
 	return tokenStr, nil
+}
+
+func findImageByID(path string, id string) ([]byte, error) {
+	var data []byte
+	name := id + ".jpg"
+
+	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.Name() == name {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			dataFile, err := io.ReadAll(file)
+			if err != nil {
+				return err
+			}
+
+			data = dataFile
+			return nil
+		}
+
+		return nil
+	})
+
+	return data, err
 }
