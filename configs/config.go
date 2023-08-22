@@ -81,7 +81,7 @@ func NewConfig() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 
-	if err := gotenv.Load("configs/.env"); err != nil {
+	if err := gotenv.Load("configs/example.env"); err != nil {
 		return nil, err
 	}
 	viper.SetEnvPrefix("advert")
