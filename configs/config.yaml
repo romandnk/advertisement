@@ -1,5 +1,5 @@
 server:
-  host: "localhost"
+  host: "advertisement"
   port: "8080"
   read_timeout: "10s"
   write_timeout: "10s"
@@ -11,7 +11,7 @@ zap_logger:
   error_output_path: ["stderr"]
 
 postgres:
-  host: "localhost"
+  host: "postgres"
   port: "5432"
   db_name: "adverts_db"
   sslmode: "disable"
